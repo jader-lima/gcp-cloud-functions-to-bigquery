@@ -12,6 +12,7 @@ env:
     SERVICE_ACCOUNT_NAME : service-account-composer-env
     INPUT_FOLDER: transient
     GS_PREFIX : gs://
+    GCP_SERVICE_API_0 : serviceusage.googleapis.com
     GCP_SERVICE_API_1 : cloudbuild.googleapis.com
     GCP_SERVICE_API_2 : run.googleapis.com
     GCP_SERVICE_API_3 : cloudfunctions.googleapis.com
@@ -66,6 +67,7 @@ jobs:
     # Step to Create GCP Bucket 
     - name: Enable gcp service api's
       run: |-
+        gcloud services enable ${{ env.GCP_SERVICE_API_0 }}
         gcloud services enable ${{ env.GCP_SERVICE_API_1 }}
         gcloud services enable ${{ env.GCP_SERVICE_API_2 }}
         gcloud services enable ${{ env.GCP_SERVICE_API_3 }}
