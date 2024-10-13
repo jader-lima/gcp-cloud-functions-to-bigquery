@@ -20,6 +20,35 @@ CUSTOM_ROLE_DESCRIPTION="Custom role for composer servless call cloud functions 
 CUSTOM_ROLE_PERMISSIONS="cloudfunctions.functions.invoke,storage.objects.get,storage.objects.list,bigquery.jobs.create,bigquery.tables.get,iam.serviceAccounts.actAs"
 
 
+###############criando conta de serviço e dando permissões adequadas #######################
+
+
+PROJECT_ID=proj-cloud-functions-composer
+
+
+gcloud config set project $PROJECT_ID
+
+
+gcloud iam service-accounts create ci-cd-service-account \
+    --description="Service account for GitHub Actions CI/CD" \
+    --display-name="CI/CD Service Account"
+
+
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:ci-cd-service-account@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/editor"
+    
+gcloud iam service-accounts keys create ~/ci-cd-service-account-key.json \
+    --iam-account=ci-cd-service-account@$PROJECT_ID.iam.gserviceaccount.com
+
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:ci-cd-service-account@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/serviceusage.serviceUsageAdmin"
+
+
+
 
 ########################## Configurar o Projeto no GCP ############################# 
 gcloud config set project $PROJECT_ID
