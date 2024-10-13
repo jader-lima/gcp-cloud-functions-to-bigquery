@@ -260,7 +260,7 @@ jobs:
     - name: Create composer variable ${{ secrets.PROJECT_ID }}
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
-        --location ${{ env.$REGION}} variables \
+        --location ${{ env.REGION}} variables \
         --set PROJECT_ID ${{ secrets.PROJECT_ID }}
 
     - name: Create composer variable ${{ env.REGION}}
