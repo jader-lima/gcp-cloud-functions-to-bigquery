@@ -283,31 +283,31 @@ jobs:
 
     - name: Create composer variable ${{ secrets.BUCKET_DATALAKE }}
       run: |-
-      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION}} variables \
         --set BUCKET_NAME ${{ secrets.BUCKET_DATALAKE }}
 
     - name: Create composer variable ${{ env.TRANSIENT_FILE_PATH }}
       run: |-
-      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set TRANSIENT_FILE_PATH ${{ env.TRANSIENT_FILE_PATH }}
 
     - name: Create composer variable ${{ env.BRONZE_PATH }}
       run: |-
-      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         --set BRONZE_PATH ${{ env.BRONZE_PATH }}
 
     - name: Create composer variable ${{ env.SILVER_PATH}}
       run: |-
-      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         --set SILVER_PATH ${{ env.SILVER_PATH }}
 
     - name: Create composer variable ${{ env.REGION_PROJECT_ID }}
       run: |-
-      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         --set REGION_PROJECT_ID ${{ env.REGION_PROJECT_ID }}
 
@@ -338,12 +338,12 @@ jobs:
 
     - name: Create composer http connectuion ${{ env.HTTP_CONNECTION }}
       run: |-
-      HOST=https://${{ env.REGION_PROJECT_ID }}.cloudfunctions.net
-      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
-      --location ${{ env.REGION }} connections \
-      -- add ${{ env.HTTP_CONNECTION }} \
-      --conn-type ${{ env.CONNECTION_TYPE  }}
-      --conn-host $HOST
+        HOST=https://${{ env.REGION_PROJECT_ID }}.cloudfunctions.net
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} connections \
+        -- add ${{ env.HTTP_CONNECTION }} \
+        --conn-type ${{ env.CONNECTION_TYPE  }}
+        --conn-host $HOST
 
 
 
