@@ -12,6 +12,10 @@ env:
     SERVICE_ACCOUNT_NAME : service-account-composer-env
     INPUT_FOLDER: transient
     GS_PREFIX : gs://
+    GCP_SERVICE_API_1 : cloudbuild.googleapis.com
+    GCP_SERVICE_API_2 : run.googleapis.com
+    GCP_SERVICE_API_3 : cloudfunctions.googleapis.com
+    GCP_SERVICE_API_4 : composer.googleapis.com
     CUSTOM_ROLE_NAME : customrolecomposer
     CUSTOM_ROLE_TITLE : "Custon Role Composer"
     CUSTOM_ROLE_DESCRIPTION : "Custom role for composer servless call cloud functions "
