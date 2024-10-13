@@ -150,9 +150,6 @@ jobs:
     #cloud_function_scripts/csv_to_parquet
     - name: Create cloud function - ${{ env.CLOUD_FUNCTION_1_NAME }}
       run: |-
-        cd ~
-        pwd
-        ls -ls
         cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_1_NAME }}
         gcloud functions deploy ${{ env.CLOUD_FUNCTION_1_NAME }} \
         --gen2 \
@@ -165,7 +162,6 @@ jobs:
 
     - name: Create cloud function - ${{ env.CLOUD_FUNCTION_2_NAME }}
       run: |-
-        cd ~
         cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_2_NAME }}
         gcloud functions deploy ${{ env.CLOUD_FUNCTION_2_NAME }} \
         --gen2 \
@@ -175,7 +171,6 @@ jobs:
         --trigger-http \
         --region ${{ env.REGION }} \
         --entry-point ${{ env.CLOUD_FUNCTION_2_NAME }}
-
 
   deploy-composer-service-account:
     needs: [enable-services, deploy-buckets, deploy-cloud-function ]
