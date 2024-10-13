@@ -220,6 +220,7 @@ jobs:
         --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
         --role=projects/${{secrets.PROJECT_ID}}/roles/${{env.CUSTOM_ROLE_NAME}}
 
+  deploy-composer-environment:
     needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
     runs-on: ubuntu-22.04
     timeout-minutes: 25
