@@ -1,0 +1,353 @@
+name: Create and Deploy DataFlow Classic template with a Schedule to run it
+
+env:
+    REGION : us-east1
+    ZONE : us-east1-a
+    TRANSIENT_FILE_PATH : transient/olist/olist_customers_dataset.csv 
+    SILVER_PATH : silver/olist/customers/customer
+    BRONZE_PATH : bronze/olist/customers/customer
+    COMPOSER_ENV_NAME : airflow-enviroment
+    CLOUD_FUNCTION_1_NAME : csv_to_parquet
+    CLOUD_FUNCTION_2_NAME : olist_customer_transformation
+    SERVICE_ACCOUNT_NAME : service-account-composer-env
+    INPUT_FOLDER: transient
+    GS_PREFIX : gs://
+    CUSTOM_ROLE_NAME : customrolecomposer
+    CUSTOM_ROLE_TITLE : "Custon Role Composer"
+    CUSTOM_ROLE_DESCRIPTION : "Custom role for composer servless call cloud functions "
+    CUSTOM_ROLE_PERMISSIONS : "cloudfunctions.functions.invoke,storage.objects.get,storage.objects.list,bigquery.jobs.create,bigquery.tables.get,iam.serviceAccounts.actAs"
+    PYTHON_FUNCTION_RUNTIME : python310
+    FUNCTION_SCRIPTS : cloud_function_scripts
+    FUNCTION_CPU : .333
+    FUNCTION_MEMORY : 512
+    COMPOSER_ENV_SIZE : small 
+    COMPOSER_IMAGE_VERSION : composer-3-airflow-2.9.3
+    HTTP_CONNECTION : http_default
+    CONNECTION_TYPE : http
+
+
+
+
+on:
+    push:
+        branchs: [main]
+
+jobs:
+
+  enable-services:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v2
+    
+    # Step to Authenticate with GCP
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_DEVOPS_SA_KEY }}
+
+    # Step to Configure  Cloud SDK
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+        
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+    - name: Set up python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8.16
+
+    # Step to Create GCP Bucket 
+    - name: Enable gcp service api's
+      run: |-
+        gcloud services enable ${{ env.GCP_SERVICE_API_1 }}
+        gcloud services enable ${{ env.GCP_SERVICE_API_2 }}
+        gcloud services enable ${{ env.GCP_SERVICE_API_3 }}
+        gcloud services enable ${{ env.GCP_SERVICE_API_4 }}
+
+
+  deploy-buckets:
+    needs: [enable-services]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_DEVOPS_SA_KEY }}
+    
+    # Step to Authenticate with GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+    # Step to Create GCP Bucket 
+    - name: Create Google Cloud Storage - datalake
+      run: |-
+        if ! gsutil ls -p ${{ secrets.PROJECT_ID }} gs://${{ secrets.BUCKET_DATALAKE }} &> /dev/null; \
+          then \
+            gcloud storage buckets create gs://${{ secrets.BUCKET_DATALAKE }} --default-storage-class=nearline --location=${{ env.REGION }}
+          else
+            echo "Cloud Storage : gs://${{ secrets.BUCKET_DATALAKE }}  already exists" ! 
+          fi
+
+
+    # Step to Upload the file to GCP Bucket - transient files
+    - name: Upload transient files to Google Cloud Storage
+      run: |-
+        TARGET=${{ env.INPUT_FOLDER }}
+        BUCKET_PATH=${{ secrets.BUCKET_DATALAKE }}/${{ env.INPUT_FOLDER }}    
+        gsutil cp -r $TARGET gs://${BUCKET_PATH}
+
+
+  deploy-cloud-function:
+    needs: [enable-services, deploy-buckets]
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v2
+    
+    # Step to Authenticate with GCP
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_DEVOPS_SA_KEY }}
+
+    # Step to Configure  Cloud SDK
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+        
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+    - name: Set up python 3.10
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.10.12
+
+    - name: Create cloud function - ${{ env.CLOUD_FUNCTION_1_NAME }}
+      run: |-
+        cd ~
+        cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_1_NAME }}
+        gcloud functions deploy ${{ env.CLOUD_FUNCTION_1_NAME }} \
+        --gen2 \
+        --cpu=${{ env.FUNCTION_CPU  } \
+        --memory=${{ env.FUNCTION_MEMORY  } \
+        --runtime ${{ env.PYTHON_FUNCTION_RUNTIME }} \
+        --trigger-http \
+        --region ${{ env.REGION }} \
+        --entry-point ${{ env.CLOUD_FUNCTION_1_NAME }}
+
+    - name: Create cloud function - ${{ env.CLOUD_FUNCTION_2_NAME }}
+      run: |-
+        cd ~
+        cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_2_NAME }}
+        gcloud functions deploy ${{ env.CLOUD_FUNCTION_2_NAME }} \
+        --gen2 \
+        --cpu=${{ env.FUNCTION_CPU  } \
+        --memory=${{ env.FUNCTION_MEMORY  } \
+        --runtime ${{ env.PYTHON_FUNCTION_RUNTIME }} \
+        --trigger-http \
+        --region ${{ env.REGION }} \
+        --entry-point ${{ env.CLOUD_FUNCTION_2_NAME }}
+
+
+  deploy-composer-service-account:
+    needs: [enable-services, deploy-buckets, deploy-cloud-function ]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_SA_KEY }}
+    
+    # Step to Authenticate with GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+
+    - name: Create service account
+      run: |-
+      
+        if ! gcloud iam service-accounts list | grep -i ${{ env.SERVICE_ACCOUNT_NAME}} &> /dev/null; \
+          then \
+            gcloud iam service-accounts create ${{ env.SERVICE_ACCOUNT_NAME }} \
+            --display-name=${{ env.SERVICE_ACCOUNT_DESCRIPTION }}
+          fi
+    - name: Create Custom role for service account
+      run: |-
+        if ! gcloud iam roles list --project ${{ secrets.PROJECT_ID }} | grep -i ${{ env.CUSTOM_ROLE_NAME }} &> /dev/null; \
+          then \
+            gcloud iam roles create ${{ env.CUSTOM_ROLE_NAME }} --project ${{ secrets.PROJECT_ID }} \
+            --title ${{ env.CUSTOM_ROLE_TITLE }} --description ${{ env.CUSTOM_ROLE_DESCRIPTION }}  \
+            --permissions ${{ env.CUSTOM_ROLE_PERMISSIONS }} --stage ALPHA
+          fi    
+
+    - name: Add the custom role for service account
+      run: |-
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+        --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+        --role=projects/${{secrets.PROJECT_ID}}/roles/${{env.CUSTOM_ROLE_NAME}}
+
+  
+  deploy-composer-environment:
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_SA_KEY }}
+    
+    # Step to Authenticate with GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+    # Create composer environments
+    - name: Create composer environments
+      run: |-
+        gcloud composer environments create $COMPOSER_ENV_NAME \
+        --project ${{secrets.PROJECT_ID}} \
+        --location ${{ env.REGION }} \
+        --environment-size ${{ env.COMPOSER_ENV_SIZE }} \
+        --image-version ${{ env.COMPOSER_IMAGE_VERSION }} \
+        --service-account ${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com
+
+    # Create composer environments
+    - name: Create composer variable ${{ secrets.PROJECT_ID }}
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.$REGION}} variables \
+        --set PROJECT_ID ${{ secrets.PROJECT_ID }}
+
+    - name: Create composer variable ${{ env.REGION}}
+      run: |-  
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+          --location ${{ env.REGION }} variables \
+          -- set REGION ${{ env.REGION }}
+
+    - name: Create composer variable ${{ env.CLOUD_FUNCTION_1_NAME}}
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }}\
+          --location ${{ env.REGION }} variables \
+          --set CLOUD_FUNCTION_1_NAME ${{ env.CLOUD_FUNCTION_1_NAME }}
+
+    - name: Create composer variable ${{ env.CLOUD_FUNCTION_2_NAME }}
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        --set CLOUD_FUNCTION_2_NAME ${{ env.CLOUD_FUNCTION_2_NAME }}
+
+    - name: Create composer variable ${{ secrets.BUCKET_DATALAKE }}
+      run: |-
+      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION}} variables \
+        --set BUCKET_NAME ${{ secrets.BUCKET_DATALAKE }}
+
+    - name: Create composer variable ${{ env.TRANSIENT_FILE_PATH }}
+      run: |-
+      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        -- set TRANSIENT_FILE_PATH ${{ env.TRANSIENT_FILE_PATH }}
+
+    - name: Create composer variable ${{ env.BRONZE_PATH }}
+      run: |-
+      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        --set BRONZE_PATH ${{ env.BRONZE_PATH }}
+
+    - name: Create composer variable ${{ env.SILVER_PATH}}
+      run: |-
+      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        --set SILVER_PATH ${{ env.SILVER_PATH }}
+
+    - name: Create composer variable ${{ env.REGION_PROJECT_ID }}
+      run: |-
+      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        --set REGION_PROJECT_ID ${{ env.REGION_PROJECT_ID }}
+
+  deploy-composer-http-connection:
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-composer-environment ]
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_SA_KEY }}
+    
+    # Step to Authenticate with GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+    - name: Create composer variable ${{ env.CLOUD_FUNCTION_2_NAME }}
+      run: |-
+      HOST=https://${{ env.REGION_PROJECT_ID }}.cloudfunctions.net
+      gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+      --location ${{ env.REGION }} connections \
+      -- add ${{ env.HTTP_CONNECTION }} \
+      --conn-type ${{ env.CONNECTION_TYPE  }}
+      --conn-host $HOST
+
+
+
+
