@@ -148,8 +148,8 @@ jobs:
         cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_1_NAME }}
         gcloud functions deploy ${{ env.CLOUD_FUNCTION_1_NAME }} \
         --gen2 \
-        --cpu=${{ env.FUNCTION_CPU  } \
-        --memory=${{ env.FUNCTION_MEMORY  } \
+        --cpu=${{ env.FUNCTION_CPU  }} \
+        --memory=${{ env.FUNCTION_MEMORY  }} \
         --runtime ${{ env.PYTHON_FUNCTION_RUNTIME }} \
         --trigger-http \
         --region ${{ env.REGION }} \
@@ -161,8 +161,8 @@ jobs:
         cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_2_NAME }}
         gcloud functions deploy ${{ env.CLOUD_FUNCTION_2_NAME }} \
         --gen2 \
-        --cpu=${{ env.FUNCTION_CPU  } \
-        --memory=${{ env.FUNCTION_MEMORY  } \
+        --cpu=${{ env.FUNCTION_CPU  }} \
+        --memory=${{ env.FUNCTION_MEMORY  }} \
         --runtime ${{ env.PYTHON_FUNCTION_RUNTIME }} \
         --trigger-http \
         --region ${{ env.REGION }} \
