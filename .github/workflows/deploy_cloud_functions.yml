@@ -25,9 +25,6 @@ env:
     HTTP_CONNECTION : http_default
     CONNECTION_TYPE : http
 
-
-
-
 on:
     push:
         branchs: [main]
@@ -339,7 +336,7 @@ jobs:
       run: |-
         gcloud auth configure-docker
 
-    - name: Create composer variable ${{ env.CLOUD_FUNCTION_2_NAME }}
+    - name: Create composer http connectuion ${{ env.HTTP_CONNECTION }}
       run: |-
       HOST=https://${{ env.REGION_PROJECT_ID }}.cloudfunctions.net
       gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
