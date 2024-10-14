@@ -1,4 +1,4 @@
-name: Create and Deploy DataFlow Classic template with a Schedule to run it
+name: Create and Deploy Cloud Functions and Composer Environment with a DAG for orquestrate a data pipeline 
 
 env:
     REGION : us-east1
@@ -219,8 +219,9 @@ jobs:
         gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
         --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
         --role=projects/${{secrets.PROJECT_ID}}/roles/${{env.CUSTOM_ROLE_NAME}}
+        
 
-  deploy-composer-environment:
+  deploy-composer-service-account:
     needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
     runs-on: ubuntu-22.04
     timeout-minutes: 25

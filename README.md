@@ -26,6 +26,9 @@ CUSTOM_ROLE_PERMISSIONS="cloudfunctions.functions.invoke,storage.objects.get,sto
 PROJECT_ID=proj-cloud-functions-composer
 
 
+PROJECT_ID=proj-cloud-functions-composer
+
+
 gcloud config set project $PROJECT_ID
 
 
@@ -47,7 +50,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:ci-cd-service-account@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/serviceusage.serviceUsageAdmin"
 
-
+        gcloud services enable serviceusage.googleapis.com
 
 
 ########################## Configurar o Projeto no GCP ############################# 
