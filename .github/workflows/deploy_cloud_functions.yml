@@ -224,7 +224,7 @@ jobs:
   deploy-composer-environment:
     needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 40
 
     steps:
     - name: Checkout
