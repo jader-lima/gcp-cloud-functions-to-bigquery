@@ -227,6 +227,10 @@ jobs:
               --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
               --role="roles/composer.admin"
 
+            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+              --role="roles/composer.worker"
+
             # Permissão para criar e configurar instâncias e recursos na VPC
             gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
               --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
@@ -312,7 +316,7 @@ jobs:
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION}} variables \
-        --set PROJECT_ID ${{ secrets.PROJECT_ID }}
+        -- set PROJECT_ID ${{ secrets.PROJECT_ID }}
 
     - name: Create composer variable ${{ env.REGION}}
       run: |-  
@@ -324,19 +328,19 @@ jobs:
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }}\
           --location ${{ env.REGION }} variables \
-          --set CLOUD_FUNCTION_1_NAME ${{ env.CLOUD_FUNCTION_1_NAME }}
+          -- set CLOUD_FUNCTION_1_NAME ${{ env.CLOUD_FUNCTION_1_NAME }}
 
     - name: Create composer variable ${{ env.CLOUD_FUNCTION_2_NAME }}
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
-        --set CLOUD_FUNCTION_2_NAME ${{ env.CLOUD_FUNCTION_2_NAME }}
+        -- set CLOUD_FUNCTION_2_NAME ${{ env.CLOUD_FUNCTION_2_NAME }}
 
     - name: Create composer variable ${{ secrets.BUCKET_DATALAKE }}
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION}} variables \
-        --set BUCKET_NAME ${{ secrets.BUCKET_DATALAKE }}
+        -- set BUCKET_NAME ${{ secrets.BUCKET_DATALAKE }}
 
     - name: Create composer variable ${{ env.TRANSIENT_FILE_PATH }}
       run: |-
@@ -348,19 +352,19 @@ jobs:
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
-        --set BRONZE_PATH ${{ env.BRONZE_PATH }}
+        -- set BRONZE_PATH ${{ env.BRONZE_PATH }}
 
     - name: Create composer variable ${{ env.SILVER_PATH}}
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
-        --set SILVER_PATH ${{ env.SILVER_PATH }}
+        -- set SILVER_PATH ${{ env.SILVER_PATH }}
 
     - name: Create composer variable ${{ env.REGION_PROJECT_ID }}
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
-        --set REGION_PROJECT_ID ${{ env.REGION_PROJECT_ID }}
+        -- set REGION_PROJECT_ID ${{ env.REGION_PROJECT_ID }}
 
   deploy-composer-http-connection:
     needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-composer-environment ]
