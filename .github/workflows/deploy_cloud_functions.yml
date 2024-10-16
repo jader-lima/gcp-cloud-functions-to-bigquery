@@ -9,7 +9,7 @@ env:
     COMPOSER_ENV_NAME : airflow-enviroment
     CLOUD_FUNCTION_1_NAME : csv_to_parquet
     CLOUD_FUNCTION_2_NAME : olist_customer_transformation
-    SERVICE_ACCOUNT_NAME : service-account-composer-env-nova
+    SERVICE_ACCOUNT_NAME : service-account-composer-n
     INPUT_FOLDER: transient
     GS_PREFIX : gs://
     GCP_SERVICE_API_0 : serviceusage.googleapis.com
