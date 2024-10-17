@@ -304,16 +304,15 @@ jobs:
     # Create composer environments
     - name: Create composer environments
       run: |-
-        if ! gcloud composer environments list --project=${{secrets.PROJECT_ID}} --locations=${{ env.REGION }} | grep -i ${{ env.SERVICE_ACCOUNT_NAME}} &> /dev/null; \
-          then \ 
+        if ! gcloud composer environments list --project=${{ secrets.PROJECT_ID }} --locations=${{ env.REGION }} | grep -i ${{ env.COMPOSER_ENV_NAME }} &> /dev/null; then
             gcloud composer environments create ${{ env.COMPOSER_ENV_NAME }} \
-                --project ${{secrets.PROJECT_ID}} \
+                --project ${{ secrets.PROJECT_ID }} \
                 --location ${{ env.REGION }} \
                 --environment-size ${{ env.COMPOSER_ENV_SIZE }} \
                 --image-version ${{ env.COMPOSER_IMAGE_VERSION }} \
-                --service-account ${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com
+                --service-account ${{ env.SERVICE_ACCOUNT_NAME }}@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com
         else
-          echo "composer enviroment ${{ env.COMPOSER_ENV_NAME }}   already exists" ! 
+            echo "Composer environment ${{ env.COMPOSER_ENV_NAME }} already exists!"
         fi
 
     # Create composer environments
