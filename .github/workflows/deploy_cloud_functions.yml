@@ -316,55 +316,55 @@ jobs:
         fi
 
     # Create composer environments
-    - name: Create composer variable ${{ secrets.PROJECT_ID }}
+    - name: Create composer variable PROJECT_ID 
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION}} variables \
         -- set PROJECT_ID ${{ secrets.PROJECT_ID }}
 
-    - name: Create composer variable ${{ env.REGION}}
+    - name: Create composer variable REGION
       run: |-  
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
           --location ${{ env.REGION }} variables \
           -- set REGION ${{ env.REGION }}
 
-    - name: Create composer variable ${{ env.CLOUD_FUNCTION_1_NAME}}
+    - name: Create composer variable CLOUD_FUNCTION_1_NAME
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }}\
           --location ${{ env.REGION }} variables \
           -- set CLOUD_FUNCTION_1_NAME ${{ env.CLOUD_FUNCTION_1_NAME }}
 
-    - name: Create composer variable ${{ env.CLOUD_FUNCTION_2_NAME }}
+    - name: Create composer variable CLOUD_FUNCTION_2_NAME
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set CLOUD_FUNCTION_2_NAME ${{ env.CLOUD_FUNCTION_2_NAME }}
 
-    - name: Create composer variable ${{ secrets.BUCKET_DATALAKE }}
+    - name: Create composer variable BUCKET_DATALAKE
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION}} variables \
         -- set BUCKET_NAME ${{ secrets.BUCKET_DATALAKE }}
 
-    - name: Create composer variable ${{ env.TRANSIENT_FILE_PATH }}
+    - name: Create composer variable TRANSIENT_FILE_PATH
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set TRANSIENT_FILE_PATH ${{ env.TRANSIENT_FILE_PATH }}
 
-    - name: Create composer variable ${{ env.BRONZE_PATH }}
+    - name: Create composer variable BRONZE_PATH 
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set BRONZE_PATH ${{ env.BRONZE_PATH }}
 
-    - name: Create composer variable ${{ env.SILVER_PATH}}
+    - name: Create composer variable SILVER_PATH
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set SILVER_PATH ${{ env.SILVER_PATH }}
 
-    - name: Create composer variable ${{ env.REGION_PROJECT_ID }}
+    - name: Create composer variable REGION_PROJECT_ID
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
