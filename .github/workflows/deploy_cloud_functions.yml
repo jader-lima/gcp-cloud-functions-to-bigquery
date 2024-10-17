@@ -364,7 +364,7 @@ jobs:
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
-        -- set REGION_PROJECT_ID ${{ env.REGION_PROJECT_ID }}
+        -- set REGION_PROJECT_ID ${{ env.REGION_PROJECT_ID }}-${{secrets.PROJECT_ID}}
 
   deploy-composer-http-connection:
     needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-composer-environment ]
