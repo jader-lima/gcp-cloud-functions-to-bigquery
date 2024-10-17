@@ -207,73 +207,66 @@ jobs:
           fi
     - name: Add permissions to service account
       run: |-
-         if ! gcloud iam service-accounts list | grep -i ${{ env.SERVICE_ACCOUNT_NAME}} &> /dev/null; \
-          then \           
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/composer.user"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/composer.user"
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/storage.objectAdmin"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/storage.objectAdmin"
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/cloudfunctions.invoker"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/cloudfunctions.invoker"
+        # Permissão para criar e gerenciar ambientes Composer
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/composer.admin"
 
-            # Permissão para criar e gerenciar ambientes Composer
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/composer.admin"
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/composer.worker"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/composer.worker"
+        # Permissão para criar e configurar instâncias e recursos na VPC
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/compute.networkAdmin"
 
-            # Permissão para criar e configurar instâncias e recursos na VPC
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/compute.networkAdmin"
+        # Permissão para interagir com o Cloud Storage, necessário para buckets e logs
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/storage.admin"
 
-            # Permissão para interagir com o Cloud Storage, necessário para buckets e logs
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/storage.admin"
+        # Permissão para criar e gerenciar recursos no projeto, como buckets e instâncias
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/editor"
 
-            # Permissão para criar e gerenciar recursos no projeto, como buckets e instâncias
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/editor"
+        # Permissão para acessar e usar recursos necessários para o IAM
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/iam.serviceAccountUser"
 
-            # Permissão para acessar e usar recursos necessários para o IAM
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/iam.serviceAccountUser"
+        gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
+          --region=${{env.REGION}} \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/cloudfunctions.invoker"
 
-            gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
-              --region=${{env.REGION}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/cloudfunctions.invoker"
+        gcloud functions add-iam-policy-binding $CLOUD_FUNCTION_2_NAME \
+          --region=$REGION \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --role="roles/cloudfunctions.invoker"
 
-            gcloud functions add-iam-policy-binding $CLOUD_FUNCTION_2_NAME \
-              --region=$REGION \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/cloudfunctions.invoker"
+        gcloud functions add-invoker-policy-binding $CLOUD_FUNCTION_1_NAME \
+          --project=${{secrets.PROJECT_ID}} \
+          --region=$REGION \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
 
-            gcloud functions add-invoker-policy-binding $CLOUD_FUNCTION_1_NAME \
-              --project=${{secrets.PROJECT_ID}} \
-              --region=$REGION \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-
-            gcloud functions add-invoker-policy-binding $CLOUD_FUNCTION_2_NAME \
-              --project=${{secrets.PROJECT_ID}} \
-              --region=$REGION \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-
-          fi    
-
-
+        gcloud functions add-invoker-policy-binding $CLOUD_FUNCTION_2_NAME \
+          --project=${{secrets.PROJECT_ID}} \
+          --region=$REGION \
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com 
 
   deploy-composer-environment:
     needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
