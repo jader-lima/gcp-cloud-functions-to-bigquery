@@ -424,6 +424,9 @@ jobs:
         version: '>= 363.0.0'
         project_id: ${{ secrets.PROJECT_ID }}
 
-    - name: Deploy DAG to Composer
+    - name: Get Composer bucket name and Deploy DAG to Composer
       run: |-
-        gsutil -m cp -r ./dags/* gs://${{ env.REGION }}-${{ secrets.PROJECT_ID }}-composer-bucket/dags/
+        COMPOSER_BUCKET=$(gcloud composer environments describe ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} \
+        --format="value(config.dagGcsPrefix)")
+        gsutil -m cp -r ./dags/* $COMPOSER_BUCKET/dags/
