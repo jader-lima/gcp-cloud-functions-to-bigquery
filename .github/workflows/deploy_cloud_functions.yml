@@ -304,12 +304,17 @@ jobs:
     # Create composer environments
     - name: Create composer environments
       run: |-
-        gcloud composer environments create $COMPOSER_ENV_NAME \
-        --project ${{secrets.PROJECT_ID}} \
-        --location ${{ env.REGION }} \
-        --environment-size ${{ env.COMPOSER_ENV_SIZE }} \
-        --image-version ${{ env.COMPOSER_IMAGE_VERSION }} \
-        --service-account ${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com
+        if ! gcloud composer environments list --project=${{secrets.PROJECT_ID}} --locations=${{ env.REGION }} | grep -i ${{ env.SERVICE_ACCOUNT_NAME}} &> /dev/null; \
+          then \ 
+            gcloud composer environments create ${{ env.COMPOSER_ENV_NAME }} \
+                --project ${{secrets.PROJECT_ID}} \
+                --location ${{ env.REGION }} \
+                --environment-size ${{ env.COMPOSER_ENV_SIZE }} \
+                --image-version ${{ env.COMPOSER_IMAGE_VERSION }} \
+                --service-account ${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com
+        else
+          echo "composer enviroment ${{ env.COMPOSER_ENV_NAME }}   already exists" ! 
+        fi
 
     # Create composer environments
     - name: Create composer variable ${{ secrets.PROJECT_ID }}
@@ -393,7 +398,7 @@ jobs:
 
     - name: Create composer http connectuion ${{ env.HTTP_CONNECTION }}
       run: |-
-        HOST=https://${{ env.REGION_PROJECT_ID }}.cloudfunctions.net
+        HOST=https:// ${{ env.REGION_PROJECT_ID }}-${{secrets.PROJECT_ID}}.cloudfunctions.net
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} connections \
         -- add ${{ env.HTTP_CONNECTION }} \
