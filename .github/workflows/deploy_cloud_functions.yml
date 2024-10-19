@@ -249,7 +249,7 @@ jobs:
           --role="roles/iam.serviceAccountUser"
 
         gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
-          --region=${{env.REGION}}" \
+          --region="${{env.REGION}}" \
           --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
           --role="roles/cloudfunctions.invoker"
 
