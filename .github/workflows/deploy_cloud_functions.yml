@@ -253,7 +253,7 @@ jobs:
           --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
           --role="roles/cloudfunctions.invoker"
 
-        gcloud functions add-invoker-policy-binding ${{env.$CLOUD_FUNCTION_1_NAME}} \
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
           --project=${{secrets.PROJECT_ID}} \
           --region=${{env.REGION}} \
           --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com 
