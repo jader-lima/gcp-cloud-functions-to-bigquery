@@ -208,11 +208,11 @@ jobs:
     - name: Add permissions to service account
       run: |-
         gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
           --role="roles/composer.user"
 
         gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
           --role="roles/storage.objectAdmin"
 
         gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
@@ -268,12 +268,12 @@ jobs:
 
         gcloud run services add-iam-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
         --region="${{env.REGION}}" \
-        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com"   
+        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
         --role="roles/run.invoker"
 
         gcloud run services add-iam-policy-binding ${{env.CLOUD_FUNCTION_2_NAME}} \
         --region="${{env.REGION}}" \
-        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com"   
+        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
         --role="roles/run.invoker"
 
   deploy-composer-environment:
