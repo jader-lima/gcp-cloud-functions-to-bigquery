@@ -9,7 +9,7 @@ env:
     COMPOSER_ENV_NAME : airflow-enviroment
     CLOUD_FUNCTION_1_NAME : csv_to_parquet
     CLOUD_FUNCTION_2_NAME : olist_customer_transformation
-    SERVICE_ACCOUNT_NAME : composer-service-account
+    SERVICE_ACCOUNT_NAME : composer-serv-account
     INPUT_FOLDER: transient
     GS_PREFIX : gs://
     GCP_SERVICE_API_0 : serviceusage.googleapis.com
@@ -266,7 +266,8 @@ jobs:
         gcloud functions add-invoker-policy-binding $CLOUD_FUNCTION_2_NAME \
           --project=${{secrets.PROJECT_ID}} \
           --region=$REGION \
-          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com 
+          --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com       
+
 
   deploy-composer-environment:
     needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
