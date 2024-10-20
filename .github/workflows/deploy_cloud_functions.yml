@@ -266,13 +266,13 @@ jobs:
           --region="${{env.REGION}}" \
           --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com"     
 
-        SERVICE_NAME_1=gcloud functions describe ${{ env.CLOUD_FUNCTION_1_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)"
+        SERVICE_NAME_1=$(gcloud functions describe ${{ env.CLOUD_FUNCTION_1_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)")
         gcloud run services add-iam-policy-binding $SERVICE_NAME_1 \
         --region="${{env.REGION}}" \
         --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
         --role="roles/run.invoker"
 
-        SERVICE_NAME_2=gcloud functions describe ${{ env.CLOUD_FUNCTION_2_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)"
+        SERVICE_NAME_2=$(gcloud functions describe ${{ env.CLOUD_FUNCTION_2_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)")
         gcloud run services add-iam-policy-binding $SERVICE_NAME_2 \
         --region="${{env.REGION}}" \
         --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
