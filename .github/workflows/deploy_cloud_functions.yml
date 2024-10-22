@@ -176,7 +176,7 @@ jobs:
     - name: Create cloud function - ${{ env.CLOUD_FUNCTION_3_NAME }}
       run: |-
         cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_3_NAME }}
-        gcloud functions deploy ${{ env.CLOUD_FUNCTION_2_N3ME }} \
+        gcloud functions deploy ${{ env.CLOUD_FUNCTION_3_NAME }} \
         --gen2 \
         --cpu=${{ env.FUNCTION_CPU  }} \
         --memory=${{ env.FUNCTION_MEMORY  }} \
@@ -326,7 +326,7 @@ jobs:
   ###################
 
   deploy-bigquery-dataset-bigquery-tables:
-    needs: [deploy-buckets]
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
     runs-on: ubuntu-22.04
     timeout-minutes: 10
 
@@ -385,7 +385,7 @@ jobs:
         done
         echo " contador $c "
         if [ $c == 0 ]; then
-          echo "Creating table named : $table for Dataset ${{ env.BIGQUERY_DATASET}} " !
+          echo "Creating table named : $table for Dataset ${{ env.TABLE_NAME_CUSTOMER}} " !
          
           bq mk --table \
           $BIGQUERY_TABLE_CUSTOMER \
