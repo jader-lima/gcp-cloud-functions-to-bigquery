@@ -385,10 +385,10 @@ jobs:
         done
         echo " contador $c "
         if [ $c == 0 ]; then
-          echo "Creating table named : $table for Dataset ${{ env.TABLE_NAME_CUSTOMER}} " !
+          echo "Creating table named : $table for Dataset ${{ env.BIGQUERY_DATASET}} " !
          
           bq mk --table \
-          $BIGQUERY_TABLE_CUSTOMER \
+          $TABLE_NAME_CUSTOMER \
           ./big_query_schemas/customer_schema.json
 
           
