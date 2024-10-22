@@ -50,6 +50,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:ci-cd-service-account@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/serviceusage.serviceUsageAdmin"
 
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:ci-cd-service-account@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/iam.roleAdmin"
+
+
+
         gcloud services enable serviceusage.googleapis.com
 
 
