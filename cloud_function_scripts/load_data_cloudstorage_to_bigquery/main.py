@@ -3,17 +3,20 @@ import json
 import pandas as pd
 import io
 from google.cloud import storage
+import pandas_gbq
 
 
 @functions_framework.http
-def olist_customer_transformation(request):
+def load_data_cloudstorage_to_bigquery(request):
     try:
         request_json = request.get_json(silent=True)
         
-        if request_json and 'bucket' in request_json and 'source-file-path' in request_json and 'destination-file-path' in request_json:
+        if request_json and 'bucket' in request_json and 'source-file-path' in request_json and 'dataset' in request_json and 'table' in request_json and 'project_id' in request_json:
             bucket_name = request_json['bucket']
             source_file_path = request_json['source-file-path']  # path sem wildcard
-            destination_file_path = request_json['destination-file-path']
+            dataset = request_json['dataset']
+            table = request_json['table']
+            project_id  = request_json['project_id']
 
             # Criação do cliente de storage
             client = storage.Client()
@@ -23,6 +26,7 @@ def olist_customer_transformation(request):
             blobs = bucket.list_blobs(prefix=source_file_path)
 
             # Processar cada arquivo .parquet
+            bq_destination = f"{dataset}.{table}"
             for blob in blobs:
                 if blob.name.endswith('.parquet'):
                     parquet_data = blob.download_as_bytes()
@@ -35,16 +39,15 @@ def olist_customer_transformation(request):
                     parquet_buffer = io.BytesIO()
                     df.to_parquet(parquet_buffer, index=False, engine='pyarrow')
 
-                    parquet_buffer.seek(0)
+                    # Write DataFrame to BigQuery
+                    pandas_gbq.to_gbq(df, bq_destination, project_id=project_id, if_exists='replace', chunksize=5000)
+                   
 
-                    output_blob = bucket.blob(f"{destination_file_path}/{blob.name.split('/')[-1]}")
-
-                    # Fazer upload do arquivo processado
-                    output_blob.upload_from_file(parquet_buffer, content_type='application/octet-stream')
-
-            return f'Todos os arquivos .parquet foram processados e salvos em {destination_file_path}', 200
+            return f'Todos os arquivos .parquet foram processados e salvos em {bq_destination}', 200
 
         else:
             return 'Requisição inválida: Campos requeridos não encontrados', 400
     except Exception as e:
         return f'Erro: {str(e)}', 500
+
+

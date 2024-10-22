@@ -9,6 +9,7 @@ env:
     COMPOSER_ENV_NAME : airflow-enviroment
     CLOUD_FUNCTION_1_NAME : csv_to_parquet
     CLOUD_FUNCTION_2_NAME : olist_customer_transformation
+    CLOUD_FUNCTION_3_NAME : load_data_cloudstorage_to_bigquery
     SERVICE_ACCOUNT_NAME : serv-account-composer-func
     INPUT_FOLDER: transient
     GS_PREFIX : gs://
@@ -27,6 +28,8 @@ env:
     COMPOSER_IMAGE_VERSION : composer-3-airflow-2.9.3
     HTTP_CONNECTION : http_default
     CONNECTION_TYPE : http
+    BIGQUERY_DATASET : olist_dataset
+    BIGQUERY_TABLE_CUSTOMER : customer
 
 on:
     push:
@@ -170,6 +173,20 @@ jobs:
         --region ${{ env.REGION }} \
         --entry-point ${{ env.CLOUD_FUNCTION_2_NAME }}
 
+    - name: Create cloud function - ${{ env.CLOUD_FUNCTION_3_NAME }}
+      run: |-
+        cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_3_NAME }}
+        gcloud functions deploy ${{ env.CLOUD_FUNCTION_2_N3ME }} \
+        --gen2 \
+        --cpu=${{ env.FUNCTION_CPU  }} \
+        --memory=${{ env.FUNCTION_MEMORY  }} \
+        --runtime ${{ env.PYTHON_FUNCTION_RUNTIME }} \
+        --trigger-http \
+        --region ${{ env.REGION }} \
+        --entry-point ${{ env.CLOUD_FUNCTION_3_NAME }}
+
+     
+
   deploy-composer-service-account:
     needs: [enable-services, deploy-buckets, deploy-cloud-function ]
     runs-on: ubuntu-22.04
@@ -266,6 +283,15 @@ jobs:
           --region="${{env.REGION}}" \
           --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com"     
 
+        gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_3_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/cloudfunctions.invoker"
+
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_3_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com"   
+
         SERVICE_NAME_1=$(gcloud functions describe ${{ env.CLOUD_FUNCTION_1_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)")
         gcloud run services add-iam-policy-binding $SERVICE_NAME_1 \
         --region="${{env.REGION}}" \
@@ -278,6 +304,13 @@ jobs:
         --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
         --role="roles/run.invoker"
 
+        SERVICE_NAME_3=$(gcloud functions describe ${{ env.CLOUD_FUNCTION_3_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)")
+        gcloud run services add-iam-policy-binding $SERVICE_NAME_3 \
+        --region="${{env.REGION}}" \
+        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+        --role="roles/run.invoker"
+
+
         gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
         --region="${{env.REGION}}" \
         --member="allUsers"
@@ -286,8 +319,86 @@ jobs:
         --region="${{env.REGION}}" \
         --member="allUsers"
 
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_3_NAME}} \
+        --region="${{env.REGION}}" \
+        --member="allUsers"
+
+  ###################
+
+  deploy-bigquery-dataset-bigquery-tables:
+    needs: [deploy-buckets]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_DEVOPS_SA_KEY }}
+    
+    # Step to Authenticate with GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+
+    - name: Create Big Query Dataset
+      run: |-  
+        if ! bq ls --project_id ${{ secrets.PROJECT_ID}} -a | grep -w ${{ env.BIGQUERY_DATASET}} &> /dev/null; \
+          then 
+
+            bq --location=${{ env.REGION }} mk \
+          --default_table_expiration 0 \
+          --dataset ${{ env.BIGQUERY_DATASET }}
+
+          else
+            echo "Big Query Dataset : ${{ env.BIGQUERY_DATASET }} already exists" ! 
+          fi
+
+    - name: Create Big Query table
+      run: |-
+        TABLE_NAME_CUSTOMER=${{ env.BIGQUERY_DATASET}}.${{ env.BIGQUERY_TABLE_CUSTOMER}}
+        c=0
+        for table in $(bq ls --max_results 1000 "${{ secrets.PROJECT_ID}}:${{ env.BIGQUERY_DATASET}}" | tail -n +3 | awk '{print $1}'); do
+
+            # Determine the table type and file extension
+            if bq show --format=prettyjson $BIGQUERY_TABLE_CUSTOMER | jq -r '.type' | grep -q -E "TABLE"; then
+              echo "Dataset ${{ env.BIGQUERY_DATASET}} already has table named : $table " !
+              if [ "$table" == "${{ env.BIGQUERY_TABLE_CUSTOMER}}" ]; then
+                echo "Dataset ${{ env.BIGQUERY_DATASET}} already has table named : $table " !
+                ((c=c+1)) 		
+              fi                  
+            else
+                echo "Ignoring $table"            
+                continue
+            fi
+        done
+        echo " contador $c "
+        if [ $c == 0 ]; then
+          echo "Creating table named : $table for Dataset ${{ env.BIGQUERY_DATASET}} " !
+         
+          bq mk --table \
+          $BIGQUERY_TABLE_CUSTOMER \
+          ./big_query_schemas/customer_schema.json
+
+          
+        fi
+
+
+
+
   deploy-composer-environment:
-    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-bigquery-dataset-bigquery-tables ]
     runs-on: ubuntu-22.04
     timeout-minutes: 40
 
@@ -381,8 +492,22 @@ jobs:
         --location ${{ env.REGION }} variables \
         -- set REGION_PROJECT_ID "${{ env.REGION }}-${{ secrets.PROJECT_ID }}"
 
+
+    - name: Create composer variable BIGQUERY_DATASET
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        -- set BIGQUERY_DATASET "${{ env.BIGQUERY_DATASET }}"
+
+    - name: Create composer variable BIGQUERY_TABLE_CUSTOMER
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        -- set BIGQUERY_TABLE_CUSTOMER "${{ env.BIGQUERY_TABLE_CUSTOMER }}"
+
+
   deploy-composer-http-connection:
-    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-composer-environment ]
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-bigquery-dataset-bigquery-tables, deploy-composer-environment ]
     runs-on: ubuntu-22.04
 
     steps:
@@ -416,7 +541,7 @@ jobs:
         --conn-host $HOST
 
   deploy-dags:
-    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-composer-environment, deploy-composer-http-connection ]
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-bigquery-dataset-bigquery-tables, deploy-composer-environment, deploy-composer-http-connection ]
     runs-on: ubuntu-22.04
 
     steps:
