@@ -9,7 +9,8 @@ env:
     COMPOSER_ENV_NAME : airflow-enviroment
     CLOUD_FUNCTION_1_NAME : csv_to_parquet
     CLOUD_FUNCTION_2_NAME : olist_customer_transformation
-    SERVICE_ACCOUNT_NAME : composer-service-account
+    CLOUD_FUNCTION_3_NAME : load_data_cloudstorage_to_bigquery
+    SERVICE_ACCOUNT_NAME : serv-account-composer-func
     INPUT_FOLDER: transient
     GS_PREFIX : gs://
     GCP_SERVICE_API_0 : serviceusage.googleapis.com
@@ -27,6 +28,8 @@ env:
     COMPOSER_IMAGE_VERSION : composer-3-airflow-2.9.3
     HTTP_CONNECTION : http_default
     CONNECTION_TYPE : http
+    BIGQUERY_DATASET : olist_dataset
+    BIGQUERY_TABLE_CUSTOMER : customer
 
 on:
     push:
@@ -170,6 +173,20 @@ jobs:
         --region ${{ env.REGION }} \
         --entry-point ${{ env.CLOUD_FUNCTION_2_NAME }}
 
+    - name: Create cloud function - ${{ env.CLOUD_FUNCTION_3_NAME }}
+      run: |-
+        cd ${{ env.FUNCTION_SCRIPTS }}/${{ env.CLOUD_FUNCTION_3_NAME }}
+        gcloud functions deploy ${{ env.CLOUD_FUNCTION_3_NAME }} \
+        --gen2 \
+        --cpu=${{ env.FUNCTION_CPU  }} \
+        --memory=${{ env.FUNCTION_MEMORY  }} \
+        --runtime ${{ env.PYTHON_FUNCTION_RUNTIME }} \
+        --trigger-http \
+        --region ${{ env.REGION }} \
+        --entry-point ${{ env.CLOUD_FUNCTION_3_NAME }}
+
+     
+
   deploy-composer-service-account:
     needs: [enable-services, deploy-buckets, deploy-cloud-function ]
     runs-on: ubuntu-22.04
@@ -207,76 +224,181 @@ jobs:
           fi
     - name: Add permissions to service account
       run: |-
-         if ! gcloud iam service-accounts list | grep -i ${{ env.SERVICE_ACCOUNT_NAME}} &> /dev/null; \
-          then \           
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/composer.user"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/composer.user"
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/storage.objectAdmin"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/storage.objectAdmin"
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/cloudfunctions.invoker"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/cloudfunctions.invoker"
+        # Permissão para criar e gerenciar ambientes Composer
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/composer.admin"
 
-            # Permissão para criar e gerenciar ambientes Composer
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/composer.admin"
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/composer.worker"
 
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/composer.worker"
+        # Permissão para criar e configurar instâncias e recursos na VPC
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/compute.networkAdmin"
 
-            # Permissão para criar e configurar instâncias e recursos na VPC
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/compute.networkAdmin"
+        # Permissão para interagir com o Cloud Storage, necessário para buckets e logs
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/storage.admin"
 
-            # Permissão para interagir com o Cloud Storage, necessário para buckets e logs
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/storage.admin"
+        # Permissão para criar e gerenciar recursos no projeto, como buckets e instâncias
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/editor"
 
-            # Permissão para criar e gerenciar recursos no projeto, como buckets e instâncias
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/editor"
+        # Permissão para acessar e usar recursos necessários para o IAM
+        gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/iam.serviceAccountUser"
 
-            # Permissão para acessar e usar recursos necessários para o IAM
-            gcloud projects add-iam-policy-binding ${{secrets.PROJECT_ID}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/iam.serviceAccountUser"
+        gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/cloudfunctions.invoker"
 
-            gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
-              --region=${{env.REGION}} \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/cloudfunctions.invoker"
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" 
 
-            gcloud functions add-iam-policy-binding $CLOUD_FUNCTION_2_NAME \
-              --region=$REGION \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
-              --role="roles/cloudfunctions.invoker"
+        gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_2_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/cloudfunctions.invoker"
 
-            gcloud functions add-invoker-policy-binding $CLOUD_FUNCTION_1_NAME \
-              --project=${{secrets.PROJECT_ID}} \
-              --region=$REGION \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_2_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com"     
 
-            gcloud functions add-invoker-policy-binding $CLOUD_FUNCTION_2_NAME \
-              --project=${{secrets.PROJECT_ID}} \
-              --region=$REGION \
-              --member=serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com \
+        gcloud functions add-iam-policy-binding ${{env.CLOUD_FUNCTION_3_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+          --role="roles/cloudfunctions.invoker"
 
-          fi    
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_3_NAME}} \
+          --region="${{env.REGION}}" \
+          --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com"   
+
+        SERVICE_NAME_1=$(gcloud functions describe ${{ env.CLOUD_FUNCTION_1_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)")
+        gcloud run services add-iam-policy-binding $SERVICE_NAME_1 \
+        --region="${{env.REGION}}" \
+        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+        --role="roles/run.invoker"
+
+        SERVICE_NAME_2=$(gcloud functions describe ${{ env.CLOUD_FUNCTION_2_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)")
+        gcloud run services add-iam-policy-binding $SERVICE_NAME_2 \
+        --region="${{env.REGION}}" \
+        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+        --role="roles/run.invoker"
+
+        SERVICE_NAME_3=$(gcloud functions describe ${{ env.CLOUD_FUNCTION_3_NAME }} --region=${{ env.REGION }} --format="value(serviceConfig.service)")
+        gcloud run services add-iam-policy-binding $SERVICE_NAME_3 \
+        --region="${{env.REGION}}" \
+        --member="serviceAccount:${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com" \
+        --role="roles/run.invoker"
+
+
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_1_NAME}} \
+        --region="${{env.REGION}}" \
+        --member="allUsers"
+
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_2_NAME}} \
+        --region="${{env.REGION}}" \
+        --member="allUsers"
+
+        gcloud functions add-invoker-policy-binding ${{env.CLOUD_FUNCTION_3_NAME}} \
+        --region="${{env.REGION}}" \
+        --member="allUsers"
+
+  ###################
+
+  deploy-bigquery-dataset-bigquery-tables:
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_DEVOPS_SA_KEY }}
+    
+    # Step to Authenticate with GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
+
+    # Step to Configure Docker to use the gcloud command-line tool as a credential helper
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker
+
+
+    - name: Create Big Query Dataset
+      run: |-  
+        if ! bq ls --project_id ${{ secrets.PROJECT_ID}} -a | grep -w ${{ env.BIGQUERY_DATASET}} &> /dev/null; \
+          then 
+
+            bq --location=${{ env.REGION }} mk \
+          --default_table_expiration 0 \
+          --dataset ${{ env.BIGQUERY_DATASET }}
+
+          else
+            echo "Big Query Dataset : ${{ env.BIGQUERY_DATASET }} already exists" ! 
+          fi
+
+    - name: Create Big Query table
+      run: |-
+        TABLE_NAME_CUSTOMER=${{ env.BIGQUERY_DATASET}}.${{ env.BIGQUERY_TABLE_CUSTOMER}}
+        c=0
+        for table in $(bq ls --max_results 1000 "${{ secrets.PROJECT_ID}}:${{ env.BIGQUERY_DATASET}}" | tail -n +3 | awk '{print $1}'); do
+
+            # Determine the table type and file extension
+            if bq show --format=prettyjson $BIGQUERY_TABLE_CUSTOMER | jq -r '.type' | grep -q -E "TABLE"; then
+              echo "Dataset ${{ env.BIGQUERY_DATASET}} already has table named : $table " !
+              if [ "$table" == "${{ env.BIGQUERY_TABLE_CUSTOMER}}" ]; then
+                echo "Dataset ${{ env.BIGQUERY_DATASET}} already has table named : $table " !
+                ((c=c+1)) 		
+              fi                  
+            else
+                echo "Ignoring $table"            
+                continue
+            fi
+        done
+        echo " contador $c "
+        if [ $c == 0 ]; then
+          echo "Creating table named : $table for Dataset ${{ env.BIGQUERY_DATASET}} " !
+         
+          bq mk --table \
+          $TABLE_NAME_CUSTOMER \
+          ./big_query_schemas/customer_schema.json
+
+          
+        fi
+
 
 
 
   deploy-composer-environment:
-    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account ]
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-bigquery-dataset-bigquery-tables ]
     runs-on: ubuntu-22.04
     timeout-minutes: 40
 
@@ -304,70 +426,94 @@ jobs:
     # Create composer environments
     - name: Create composer environments
       run: |-
-        gcloud composer environments create $COMPOSER_ENV_NAME \
-        --project ${{secrets.PROJECT_ID}} \
-        --location ${{ env.REGION }} \
-        --environment-size ${{ env.COMPOSER_ENV_SIZE }} \
-        --image-version ${{ env.COMPOSER_IMAGE_VERSION }} \
-        --service-account ${{env.SERVICE_ACCOUNT_NAME}}@${{secrets.PROJECT_ID}}.iam.gserviceaccount.com
+        if ! gcloud composer environments list --project=${{ secrets.PROJECT_ID }} --locations=${{ env.REGION }} | grep -i ${{ env.COMPOSER_ENV_NAME }} &> /dev/null; then
+            gcloud composer environments create ${{ env.COMPOSER_ENV_NAME }} \
+                --project ${{ secrets.PROJECT_ID }} \
+                --location ${{ env.REGION }} \
+                --environment-size ${{ env.COMPOSER_ENV_SIZE }} \
+                --image-version ${{ env.COMPOSER_IMAGE_VERSION }} \
+                --service-account ${{ env.SERVICE_ACCOUNT_NAME }}@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com
+        else
+            echo "Composer environment ${{ env.COMPOSER_ENV_NAME }} already exists!"
+        fi
 
     # Create composer environments
-    - name: Create composer variable ${{ secrets.PROJECT_ID }}
+    - name: Create composer variable PROJECT_ID 
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION}} variables \
         -- set PROJECT_ID ${{ secrets.PROJECT_ID }}
 
-    - name: Create composer variable ${{ env.REGION}}
+    - name: Create composer variable REGION
       run: |-  
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
           --location ${{ env.REGION }} variables \
           -- set REGION ${{ env.REGION }}
 
-    - name: Create composer variable ${{ env.CLOUD_FUNCTION_1_NAME}}
+    - name: Create composer variable CLOUD_FUNCTION_1_NAME
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }}\
           --location ${{ env.REGION }} variables \
           -- set CLOUD_FUNCTION_1_NAME ${{ env.CLOUD_FUNCTION_1_NAME }}
 
-    - name: Create composer variable ${{ env.CLOUD_FUNCTION_2_NAME }}
+    - name: Create composer variable CLOUD_FUNCTION_2_NAME
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set CLOUD_FUNCTION_2_NAME ${{ env.CLOUD_FUNCTION_2_NAME }}
 
-    - name: Create composer variable ${{ secrets.BUCKET_DATALAKE }}
+    - name: Create composer variable CLOUD_FUNCTION_3_NAME
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        -- set CLOUD_FUNCTION_3_NAME ${{ env.CLOUD_FUNCTION_3_NAME }}
+
+    - name: Create composer variable BUCKET_DATALAKE
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION}} variables \
         -- set BUCKET_NAME ${{ secrets.BUCKET_DATALAKE }}
 
-    - name: Create composer variable ${{ env.TRANSIENT_FILE_PATH }}
+    - name: Create composer variable TRANSIENT_FILE_PATH
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set TRANSIENT_FILE_PATH ${{ env.TRANSIENT_FILE_PATH }}
 
-    - name: Create composer variable ${{ env.BRONZE_PATH }}
+    - name: Create composer variable BRONZE_PATH 
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set BRONZE_PATH ${{ env.BRONZE_PATH }}
 
-    - name: Create composer variable ${{ env.SILVER_PATH}}
+    - name: Create composer variable SILVER_PATH
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
         -- set SILVER_PATH ${{ env.SILVER_PATH }}
 
-    - name: Create composer variable ${{ env.REGION_PROJECT_ID }}
+    - name: Create composer variable REGION_PROJECT_ID
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} variables \
-        -- set REGION_PROJECT_ID ${{ env.REGION_PROJECT_ID }}
+        -- set REGION_PROJECT_ID "${{ env.REGION }}-${{ secrets.PROJECT_ID }}"
+
+
+    - name: Create composer variable BIGQUERY_DATASET
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        -- set BIGQUERY_DATASET "${{ env.BIGQUERY_DATASET }}"
+
+    - name: Create composer variable BIGQUERY_TABLE_CUSTOMER
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        -- set BIGQUERY_TABLE_CUSTOMER "${{ env.BIGQUERY_TABLE_CUSTOMER }}"
+
 
   deploy-composer-http-connection:
-    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-composer-environment ]
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-bigquery-dataset-bigquery-tables, deploy-composer-environment ]
     runs-on: ubuntu-22.04
 
     steps:
@@ -391,15 +537,38 @@ jobs:
       run: |-
         gcloud auth configure-docker
 
-    - name: Create composer http connectuion ${{ env.HTTP_CONNECTION }}
+    - name: Create composer http connection HTTP_CONNECTION
       run: |-
-        HOST=https://${{ env.REGION_PROJECT_ID }}.cloudfunctions.net
+        HOST="https://${{ env.REGION }}-${{ secrets.PROJECT_ID }}.cloudfunctions.net"
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
         --location ${{ env.REGION }} connections \
         -- add ${{ env.HTTP_CONNECTION }} \
-        --conn-type ${{ env.CONNECTION_TYPE  }}
+        --conn-type ${{ env.CONNECTION_TYPE  }} \
         --conn-host $HOST
 
+  deploy-dags:
+    needs: [enable-services, deploy-buckets, deploy-cloud-function, deploy-composer-service-account, deploy-bigquery-dataset-bigquery-tables, deploy-composer-environment, deploy-composer-http-connection ]
+    runs-on: ubuntu-22.04
 
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Authorize GCP
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json:  ${{ secrets.GCP_DEVOPS_SA_KEY }}
+    
+    # Step to Authenticate with GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        version: '>= 363.0.0'
+        project_id: ${{ secrets.PROJECT_ID }}
 
-
+    - name: Get Composer bucket name and Deploy DAG to Composer
+      run: |-
+        COMPOSER_BUCKET=$(gcloud composer environments describe ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} \
+        --format="value(config.dagGcsPrefix)")
+        gsutil -m cp -r ./dags/* $COMPOSER_BUCKET/dags/
