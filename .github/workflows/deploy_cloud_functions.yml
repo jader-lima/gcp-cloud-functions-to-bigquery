@@ -462,6 +462,12 @@ jobs:
         --location ${{ env.REGION }} variables \
         -- set CLOUD_FUNCTION_2_NAME ${{ env.CLOUD_FUNCTION_2_NAME }}
 
+    - name: Create composer variable CLOUD_FUNCTION_3_NAME
+      run: |-
+        gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
+        --location ${{ env.REGION }} variables \
+        -- set CLOUD_FUNCTION_3_NAME ${{ env.CLOUD_FUNCTION_3_NAME }}
+
     - name: Create composer variable BUCKET_DATALAKE
       run: |-
         gcloud composer environments run ${{ env.COMPOSER_ENV_NAME }} \
